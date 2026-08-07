@@ -1,0 +1,463 @@
+## 1.0.10-kmpp (2025-06-23)
+### Feature
+- [smt]: Reduce mosaic by AE parameters
+- [h264e_vepu511]: Setup avc speed registers
+- [vepu511]: Tuning based on light change
+- [vepu511]: Add dsp_luma_ave for light change tuning
+- [kmpp_obj]: Add more kmpp_obj property
+- [kmpp_packet]: Add kmpp_packet interface
+- [buffer]: Add buffer put uptr and get shmptr
+- [kmpp_obj]: Add kmpp_obj bind share memory
+- [kmpp_dmaheap]: Add dmabuf put uptr interface
+- [kmpp_meta]: Add AE parameters
+- [test]: Add stub files for external module compiling
+- [kmpp_obj]: Add object update function
+- [rc]: inter_pqp1 val
+- [kmpp]: Update avc me rdo atf tuning reg
+- [kmpp]: Add encoder fine tuning speed config
+- [mpp_rkvenc2]: add vepu511 slice fifo
+- [kmpp]: add qpmap_en and enc_spd
+- [kmpp_buffer]: Add iova, fd and dmabuf import
+- [kmpp_obj]: Modify KmppLocTbl to KmppEntry
+- [kmpp]: Support dvbm for vepu511
+- [kmpp_obj]: Add update flag type support
+- [test]: Add kmpp_buffer test
+- [kmpp_buffer]: Add KmppBuffer object
+- [kmpp_sys]: Add kmpp_ioctl for objdef
+- [vproc]: Add vepu511 pp support
+- [kmpp_obj]: Use mem pool in kmpp_obj
+- [rkvdec2]: Support rv1126b dec
+- [kmpp_obj_helper]: Add KMPP_OBJ_EXTRA_SIZE
+- [vepu511]: Add rkfbc support
+- [kmpp_shm]: Add __name_offset feature
+- [kmpp_obj]: Add userspace data access
+- [kmpp_shm]: Add kmpp_shm_get_objs_file
+- [kmpp_cls]: Add getpid function
+- [kmpp_uaccess]: Add more functions
+- [kmpp_vsp]: Add kmpi_vsp module
+- [kmpp_obj]: Add read-only entry table support
+- [kmpp_obj]: Add reset for quick entry init
+- [kmpp_sys]: Add kmpp_mem_pool
+- [kmpp_obj]: Add kmpp_obj_get_by_name
+- [kmpp_osal]: Add kmpp_allocator for dmaheap access
+- [kmpp_dev]: Support linux struct device
+- [kmpp_dmabuf]: Add linux struct device support
+- [helper]: Support level two field entry access
+- [vepu511]: add vepu511 h264/h265/jpeg
+- [kmpp_meta]: Add some meta key
+- [vsp]: Add vsp chan interface
+- [vsp]: Add chan id api
+- [objs]: Add KmppVencNtfy obj
+- [test]: Add kmpi_venc_chan_test
+- [kmpi_venc]: Add kmpi_venc_chan simple implement
+- [kmpp_obj]: Add more mode for hook table
+- [kmpp_obj]: Add hook table for set/get callback
+- [kmpp_obj]: Add KmppMeta
+- [kmpp_sym]: Add dump functions
+- [Makefile]: Add KMPP_TEST option
+- [obj/shm]: Add KmppShmPtr type for share memory
+- [kmpi]: Add channel id interface
+- [kmpp_obj]: Query all objdef at one time
+- [kmpp_trie]: Allow empty name trie for import
+- [vcodec]: Provide userspace stream address
+- [mpp_frame]: Add tile format flag
+- [kmpp_cls]: Add read fops
+- [kmpp_shm]: Allow batch get/put shm
+- [jpege]: Add jpege for rk3576
+- [kmpp_objs]: Add kmpp_objs
+- [test]: Add kmpi_enc_test
+- [kmpi]: Add kmpi_venc simple implement
+- [include]: Add kmpi.h
+- [mpp_buffer]: Export funcs
+- [mpp_mem]: Add mpp_realloc_size func
+- [test]: Add test for kmpp_sym
+- [sys]: Add kmpp_sym for cross module call
+- [mpp_frame/packet]: Export symbols
+- [Makefile]: Add version.mk to generate version.h
+- [test]: Support kmpp_enc_test for encoder flow
+- [Makefile]: Add all makefile
+- [test]: Add kmpp_enc_test
+- [test]: Add test module
+- [sys]: Add kmpp_frame
+- support vepu510 for rk3576
+- [mpp_buffer]: use new allocator and add some feature
+- [allocator]: add a simple allocator
+- [osal]: Add kmpp_uaccess module
+- [sys]: Add kmpp_obj
+- [build]: support for using different toolchain
+- [kmpp]: merge kmpp and mpp_service
+- [cmake]: Add relative path support in Kbuild
+- [fix]: Add vcodec module for encoder
+- [osal]: Add trie and config module
+- [osal]: Add osal module from develop2
+- [build]: Add build directory for cmake
+- [kmpp]: Add 6.1 kernel mpp driver
+- [rkvenc500]£ºrv1103b add slice fifo function
+- [vepu500]: Add software fly-catkin filtering for MD
+- [rkvenc_540c]: add clk set/get in procfs
+- [mpp_common]: add clk set/get in procfs
+- [vepu500]: Add new param interface
+- [vepu500]: Adjust regs setup for CVR scene
+- [vepu500]: Update state regs calculation
+- [vepu500]: Add scaling list regs setup
+- [rkvenc_540c]: add slice fifo function
+- [vepu500]: Update AQ table for H.264 smart encoding
+- [vepu500]: Add vsp filtering for H.265
+- [vepu500]: Add vsp filtering for H.264
+- [vepu500]: Add qpmap functionality for H.264
+- [vepu500]: Add anti-smear regs setup for H.264
+- [vepu500]: Add anti-flicker regs setup for H.264
+- [vepu500]:  bias regs , solve motion blur
+- [vepu500]: Add anti-ringing regs setup for H.264
+- [vepu500]: Add qpmap mode for H.265
+- [vepu500]: Add smear regs setup for HEVC
+- [vepu_pp]: add vepu500_pp/vepu540c_pp info display
+- [vepu500]: Add atr regs setup for HEVC
+- [vepu500]: Add anti-stripe regs setup for HEVC
+- [vepu500]: Tune atf for H.265
+- [vepu500]: Support fixed frame level QP for HEVC
+- [vepu500]: Assign lambda for pre-inter mode decision
+
+### Fix
+- [pp]: Fix timing of put frame buffer iova
+- [Makefile]: Fix lib-m miss files
+- [make]: Fix compile err when builtin
+- [ring_buf]: Fix kmpp_packet_put after chan destroy issue
+- [h265e_vepu511]: Update smear reg value
+- [vcodec]: Fix kfifo_alloc GFP_ATOMIC in spin lock
+- [kmpp_dmaheap]: Use kmpp_calloc_atomic
+- [kmpp]: Add cfg to control notification to third module
+- [mpp_service]: Modify queue pending_lock to spin_lock
+- [mpp_common]: Fix sleeping function called in irq
+- [mpp_enc]: Init ringbuf pool when enc init
+- [mpp_vcodec]: Fix sleeping function called from invalid context
+- [kmpp_packet]: Do not put uptr when deinit
+- [vepu511_pp]: Fix get dmabuf with invalid buffer
+- [rkvenc2]: Fix online dvbm-enc issue when suspend/resume
+- [mpp_osal]: Fix compile error on aarch64
+- [kmpp_dmaheap]: Fix dma partial sync failed issue
+- [rkvdec2_link]: Fix reg reading
+- [mpp_enc_impl]: Fix the userdata type and len
+- [mpp_service]: Compatibility issue with CONFIG_PM_SLEEP
+- [vepu511]: Make ipc_ptz lambda table same as ipc scene
+- [vepu511]: Fix venc_info error when qbias_en is 0
+- [kmpp]: Rename osal and sys init/exit function
+- [kmpp_packet]: Fix KmppPacket access NULL
+- [kmpp_frame]: Add shm kmpp buffer
+- [cmake]: Fix cmake compile error
+- [mpp_common]: Remove unsed func
+- [mpp_common]: Fix scheduling while in atomic issue
+- [inc]: Compatible with rockit
+- [kmpp_cls]: Fix get pid and tid interface
+- [rkvdec2_link]: fix vdec IP stuck issue for rv1126b
+- [vcodec_chan]: Fix rockit mpi_buf leak issue
+- [rkvenc2]: Fix enc abnormal causeby err rkfbc input
+- [vepu511]: Fix st_enc reg define
+- [kmpp_obj]: Create mempool for objdef without entry
+- [kmpi_venc]: Fix crash issue
+- [vcodec_chan]: Move frame fifo initial to chan_entry_init
+- [mpp_buffer]: Fix ref_count not initial issue
+- [mpp_common]: Fix a typo
+- [hal_vepu511]: Disable dvbm_err_en by default
+- [vcodec]: Use kfifo to store frames
+- [vcodec]: Fix online jpeg combo issues
+- [vcodec_base]: Fix update priority tab issue
+- [rkvenc2]: Fix task double handled when online case
+- [h265e_vepu511]: Update subj_opt reg value
+- [ring_buf]: Fix crash after ring buffer init failed
+- [kmpp_dmaheap]: Fix get_unmapped_area stuck issue
+- [mpp_enc]: Fix CPB size not enough problem
+- [vcodec]: Fix concurrency issues of destroying chan
+- [h265e_vepu511]: Update smear reg value
+- [h265e_vepu511]: Update enc speed ctrl
+- [rc_smt]: Fix mem leak when resolution switch
+- [smt_rc]: Fix variable overflow error
+- [rc_smt]: Fix bit width error
+- [h265e_vepu511]: Update semar reg value
+- [h265e_vepu511]: Add a new function for subj_opt reg
+- [h265e_vepu511]: Update me reg value
+- [mpp_vcodec_flow]: Fix the parallel risk of chan destroy
+- [h265e_vepu511]: Set aq reg value
+- [kmpp_dmaheap]: Fix mutex lock crash issue
+- [kmpp_meta]: Fix compile warning
+- [h265e_vepu511]: Update atr reg value
+- [hal_vepu511]: Modify MDC config
+- [h265e_vepu511]: Speed reg set for hevc
+- [vcodec_chan]: Fix eos frame with NULL buffer issue
+- [kmpp_dmabuf]: Fix sg table leak issue
+- [rkvdec2]: Fix rv1126b dec issues
+- [h264e_vepu511]: Fix hal buf leak when resolution switch
+- [vcodec]: Fix kstrdup buffer leak
+- [kmpp_buffer]: Add grp cfg init
+- [kmpp_dmaheap]: Fix ring buffer cache sync issue
+- [vepu511]: Disable qpmap default
+- [rkvenc2]: Fix irq storm when enc err
+- [vcodec]: Fix frame leak in kill rkipc test
+- [kmpp_dmaheap]: Add mutex lock to protect vm_mmap
+- [kmpp_meta]: Fix compile warning
+- [kmpp_buffer]: Add some optimizations
+- [kmpp_dmaheap]: Fix err log param error
+- [kmpp_meta]: Fix crash on meta leak and rmmod
+- [kmpp_shm]: Fix crash on shm leak
+- [kmpi_vsp]: Fix the rt_cfg leak
+- [mpp_enc]: Fix mpp_packet leak
+- [hal_vepu511]: Fix ext line buf issue
+- [h265e_vepu511]: Add cudecis_thd12 reg define
+- [kmpp_obj]: Avoid kmpp_obj_put crash on double free
+- [mpp_enc]: Fix crash on reboot
+- [kmpp_obj]: Modify kmpp_obj_from_shmptr
+- [vepu511]: Speed grade configuration of 0.67
+- [rkvenc2]: fix scheduling while atomic issue
+- [mpp_enc]: Do not check frame buf for online case
+- [dvbm]: Optimize the dvbm err info
+- [vcodec]: Trigger thread when push frame failed
+- [kmpp_buffer]: Fix buffer reuse path crash
+- [vepu511_pp]: Fix enc_stnd error causing pagefault
+- [vcodec]: fix ring_pool buffer use-after-free
+- [kmpp]: Modify log for push frame failure
+- [hal_vepu511]: Set osd to NULL after using osd
+- [vcodec]: Add more system header to mpp_vcodec_base.h
+- [kmpp_buffer]: Fix group obj error on deinit
+- [kmpp_allocator]: Fix ring buffer mmap issue
+- [h265e_vepu511]: Fix smear buffer size
+- [h264e_api]: Fix cabac and transform8x8 config issue
+- [hal_h264e_vepu511]: Fix rdo mode for P frame
+- [kmpp_sys_def]: Fix rockit compile error
+- [kmpp_obj]: Fix compile error for rockit
+- [mpp_service]: Optimize some issue
+- [kmpp_allocator]: Fix iova start from 0 issue
+- [kmpp_mem_pool]: Fix compile err
+- [kmpp_mem_pool]: Avoid extra read access
+- [kmpp_obj]: Set objdef to NULL on deinit
+- [dvbm]: Fix dual wrap issue causeby dvbm disabled
+- [vcodec_flow]: Fix cmpxchg frame failed issue
+- [kmpp_service]: Fix insmod / rmmod crash
+- [osal]: Remove an extra unlock for kmpp_dev
+- [mpp_service]: Adapter to kernel 5.10
+- [cmake]: Fix cmake compile error
+- [kmpp_obj]: Add objdefset
+- [kmpp_allocator]: Add dmabuf alloc return check
+- [kmpp_buffer]: Add more ioctl support
+- [vcodec]: fix pp_info show bug
+- [vcodec]: Fix missing frame notification to rockit
+- [kmpp_access]: Return strlen on strncpy
+- [kmpp_allocator]: Allow search default heap by name
+- [kmpp_obj]: Fix extra size usage
+- [make]: Enable all CONFIG_ROCKCHIP_MPP_XXX
+- [cmake]: Fix compile error on cmake one ko mode
+- [kmpp_trie]: Align buffer size to pointer size
+- [vepu500_pp]: Remove the struct mpi_buf *mdw_buf obj
+- [kmpp_obj]: Add more macro
+- [kmpp_allocator]: Fix sync cache partial invalid issue
+- [kmpp_allocator]: Fix default dmaheaps invalid issue
+- [kmpp_allocator]: Set dma_mask to 64
+- [kmpp_mem_pool]: Fix show info typo
+- [kmpp]: Adapter for rv1103b kernel 5.10
+- [kmpp_mem_pool]: Add memset on buffer put
+- [vcodec_flow]: Fix combo jpeg chan id get error
+- [hal_vepu511]: Fix ref frame rw mode
+- [vepu511_common]: Fix scl reg definition
+- [hal_h264e_vepu511]: Remove unneccessary hack code
+- [kmpp_allocator]: Optimize the allocator implement
+- [kmpp_obj]: Fix cmake compile error
+- [kmpp]: Fix compile error on kernel 5.10
+- [kmpp_obj]: Fix access macro return value
+- [hal_h264e_vepu511]: Fix rdo mark mode config
+- [kmpp_meta]: Fix meta access error
+- [kmpp_allocator]: Fix get size from sg and use dma-buf-cache
+- [hal_vepu511]: Set osd data after get osd
+- [mpp_allocator]: Fix re-init in get_allocator func
+- [kmpp]: Adjust header file inclusion
+- [kmpp_objs]: Fix ntfy objdef memory leak
+- [kmpp_meta]: Export symbol
+- [hal_jpege_vpu720]: Fix pic width/height align to 16
+- [cmake]: Support one ko build
+- [vcodec]: Fix access NULL packet issue
+- [Makefile]: Fix compile err
+- [mpp_common]: Add lock to pending list
+- [kmpp_obj]: Move include kmpp_string.h
+- [Makefile]: Add kmpp_meta
+- [kmpp_obj_helper]: Fix variable duplication issue
+- [rk_mpi_cmd]: Rename MPP_ENC_INSRT_USERDATA
+- [mpp_enc]: Modify naming of anti-ring
+- [mpp_buffer]: Use dma-buf-cache
+- [kmpp_obj]: Fix enum range compile error
+- [kmpi]: Rename KmppChanId chan to id
+- [kmpp_obj]: Add KMPP_OBJ_FUNC_STUB_ENABLE
+- [kmpp_trie]: Fix empty trie init root error
+- [kmpp_mem]: Do PAGE_ALIGN for vmalloc_user
+- [mpp_vcodec]: Fix compile error on cmake
+- [mpp_enc_cfg]: Remove cu_qp_delta_depth in rc cfg
+- [mpp_buffer]: Fix crash when user process killed
+- [vcodec]: Modify stream type change control cmd
+- [frame_info]: Update frame info
+- [enc]: Fix rotation/mirror not take effect
+- [rkvenc2]: Set clbk_en only in kmpp flow
+- [hal_vepu510]: Fix roi and rotation not take effect issue
+- [kmpp_venc_objs]: Add type for KmppVencInitCfgImpl
+- [kmpp_cls]: Fix osal_fs_vm_munmap failed when kmpp_shm_put
+- [kmpp_shm]: Add objdef dump on reading /dev/kmpp_objs
+- [kmpp_atomic]: Using zero-length arrays
+- [kmpp_obj]: Add default dump function
+- [kmpp_obj]: Add preset and dump function macro
+- [kmpp_sym]: Change function pointer args
+- [hal_h265e_vepu510]: Return err with err enc status
+- [makefile]: Generate version.h error with different make version
+- [Makefile]: Fix TOP dir if built-in
+- [mpp_osal]: Fix compile conflict when CONFIG_ROCKCHIP_MPP_OSAL=y
+- [allocator]: Fix buffer info import fail with only dma_buf
+- [h264e]: init transform8x8_mode=1
+- [kmpp_sym]: Add output and return pointer
+- [mpp_allocator]: Fix allocator api assign error
+- [sys]: Fix compile error by Makefile
+- [env]: Remove pde on delete env node
+- [mpp_enc]: Fix access NULL shared buf crash issue
+- [cmake]: Remove unused variables
+- [Makefile]: Add multithread compilation
+- [git]: Remove Makefile from .gitignore
+- [allocator]: compatible with different version of dmaheap
+- [vcodec]: fix compile err with makefile
+- [vcodec]: Fix compile error
+- [makefile]: optimize Makefile for comiple all to one ko
+- [kmpp_obj]: Simplify object trie root transaction
+- [osal]: Add version compat for kmpp_cls
+- compile error with develop-6.1
+- [osal/kmpp_string]: fix a compile error
+- [kmpp_mem]: Remove debug head on vmalloc_user
+- [mpp_vcodec_thread]: fix scheduling while atomic bug on vcodec remove
+- [mpp_common]: fix clk double disable issue
+- [kmpp]: Fix vdev->venc_procfs double free
+- [mpp_common]: Fix clk_on before hw_ops->init issue
+- [mpp_service]: Merge two drivers to one service
+- [osal]: Add compat for 5.10 kernel
+- [vepu500]: fix jpeg 1bpp/2bpp osd
+- [mpp_service]: Fix compile error
+- [kmpp]: add drop frame type to rockit-ko by notify_drop_frm func
+- [vepu500]: fix wrap source id mismatch handle for softdvbm
+- [mpp_enc]: fix notify to rockit when enc err
+- [mpp_vcodec]: fix get pskip num crash
+- [rkvenc500]: fix get dvbm device node fail issue
+- [rkvenc]: fix invalid wait contex
+- [vcodec]: fix mutex_lock in irq
+- [rc_model_v2]: fix threshold for qp alloction
+- [mpp_common]: fix might sleep in irq issue
+- [h264e_pps]: add scaling list mode check for profile
+- [mpp_vcodec]: fix scheduling while atomic when chan deinit
+- [mpp_vcodec]: fix access null chan_lock in mpp_vcodec_msg_handle
+- [rkvenc500]: add source miss cnt show
+- [vepu500]: fix alloc qpmap buffer fail
+- [rkvenc500]: fix dvbm disconnect failed when enc timeout
+- [rkvenc500]: fix dvbm err causeby dvbm config cleared
+- [vcodec]: fix cat venc_info crash when destory channel
+- [vepu500]: hevc, set qp value 38 when ctu is static
+- [rkvenc500]: disconnect dvbm when task timeout
+- [rc]: optimize qp for consistent force I-frame due to enc err
+- [mpp_enc]: fix realfps show value when no input frame
+- [vepu500]: Add tmvp_en for venc_info
+- [vepu500]: fix pp roi regs reset
+- [vepu500]: Add default value for AQ range param
+- [vepu500]: Update enc param info
+- [vepu500]: Add new cfg param for qpmap
+- [mpp_enc]: all prep change need resend header
+- [vepu500]: supply roi bmap mdc_skip set
+- [rkvenc540]: fix slice process when slice fifo error
+- [h264e_sps]: fix the default value of max mv length
+- [mpp_enc]: fix extra idr frame on setup same cfg
+- [rkvenc500]: adjust some log level
+- [mpp_buffer]: align to CACHE_LINE_SIZE when flush dma buf cache
+- [mpp_enc_impl]: add slice packet pts/dts
+- [rkvenc540]: fix low delay slice
+- [ring_buf]: fix get ring buf always fails
+- [vepu500_common]: fix jpeg slice enc error
+- [vepu500]: Fix initial value error of real_lvl
+- [rkvenc_500]: fix sub enc err when online resolution switch
+- [rkvenc_500]: modify vepu qos to 0x101
+- [vepu500_pp]: modify me_range reg to improve performance
+- [rkvenc_500]: clear some config before pp task
+- [vepu500]: Fix 265 smart change aq and bias val
+- [rkvenc_500]: adjust some err info logging
+- [rkvenc_540c]:Fix lambda tab value error
+- dma data direction err when flush dma cache
+- [vepu500]: Fix different results for repeated encoding
+- [vepu500]: Fix cu16 sad error
+- [mpp_enc]: fix enter reencode mode falsely when online case
+- [vepu500]: Modify RDO lambda table for H.264
+- [vepu500]: Update anti-stripe regs setup for H.264
+- [vepu500_pp]: clear adr_vsy adr_vsc reg
+- [vepu500]: Update H.264 regs setup
+- [vepu500_pp]: fix bmap_cfg reg value
+- [vepu500]: Adjust registers' assignment
+- [vepu500]: Configure quant bias for H.265
+- [vcodec]: fix combo jpeg access NULL
+- [rkvenc]: combo scaling list and jpeg table
+- [vepu500]: Set SAO merge cost weight to 4
+- [vepu500]: Tune CU partition for H.265
+- [vepu500]: Tune RDO lambda table for H.265
+- [vepu500]: Tune AQ mode for H.265
+- [vepu500]: Adjust register configuration based on datasheet
+- [vepu500]: Fix SAO lambda error
+- [vepu500]: Fix sli_cb_qp_ofst assignment error
+- [h265e]: fix missing end_of_slice_segment_flag problem
+
+### Docs
+- Update 1.0.10-kmpp CHANGELOG.md
+
+### Refactor
+- [kmpp]: Replace MppPacket with KmppPacket
+- [include]: Refactor for stub headers
+- [vcodec_flow]: Refactor process_single_chan flow
+- [mpp_buffer]: Use kmpp_buffer
+- [kmpp_mem_pool]: Refactor code
+- [kmpp_trie]: Optimize call flow
+- [kmpp_trie]: Simplify trie internal flow
+- [mpp_service]: modify some mutex lock to spin_lock
+- [kmpp]: Remove mpp_allocator and mpp_mem_pool
+- [kmpp]: Use kmpp_mem_pool
+- [mpp_buffer]: Use kmpp_allocator
+- [kmpp_frame]: Move some funcs to kmpp_meta
+- [vcodec]: Remove all legacy infos about rockit-ko
+- [mpp_buffer]: Move internal functions to impl
+- [vcodec]: Use KmppVencNtfy to notify info
+- [MppFrame]: Rename MppFrame to KmppFrame
+- [kmpp]: Move kmpp interface object define
+- [kmpp_trie]: Replace root import
+- [H265Cfg]: Merge pu cfg into cu cfg
+- [vcodec]: Support for vcodec_attr using kmpp objs
+- [mpp_enc]: Synchronize all cfg param from develop
+- [mpp_cfg]: Copy from mpp develop
+- [mpp_enc]: Modify chan_id type to RK_S32
+- [vcodec]: Import mpi_buf to MppBuffer for osd buf
+- [allocator]: Add buffer type to select different allocator
+- [kmpp_obj]: Refactor header definitions
+- [vcodec]: Rename some ops about rockit-ko
+- [ring_buf]: Rename ring buffer flush
+- [mpp_serivce]: use kmpp_copy_from/to_user
+- [osal]: Rename kmpp_fs to kmpp_file
+- [osal]: Change KmppCfg to KmppObj
+- [hal_vepu500]: remove reg_out
+- [hal]: logic of qpmap is moved to HAL layer
+
+### Perf
+- [vepu500]: Reduce cache-refresh operation
+
+### Chore
+- [include]: Fix object macro format
+- [rc_smt]: Adjust code style for rc_smt
+- [vcodec]: add color range debug info
+- [kmpp_shm]: Add dump and check function
+- [kmpp_dev]: Add system device name function
+- [kmpp_allocator]: Rename functions
+- [kmpp_mem_pool]: Update proc log
+- [kmpp_frame]: Use lowercase in header
+- [inc]: Remove some functions in rk_export_func.h
+- [kmpp_obj]: Remove redundant log
+- [kmpp_obj]: Add more dump info
+- [kmpp_trie]: Add self argument check macro
+- [kmpp_mem]: Add debug flow log
+- [inc]: Add more comments and objdef dump
+- [sys]: Add kmpp_sys.h
+- [tool]: stop style files
+- [vepu_pp]: rename pp to ivs
+- [rkvenc500]: add config for reg dump
+
+

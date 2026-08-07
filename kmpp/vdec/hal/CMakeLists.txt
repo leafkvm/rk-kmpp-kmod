@@ -1,0 +1,5 @@
+# vim: syntax=cmake
+
+ADD_SUBDIRECTORY(h264)
+ADD_SUBDIRECTORY(h265)
+ADD_SUBDIRECTORY(jpeg)
