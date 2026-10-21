@@ -11,6 +11,10 @@
 #include "mpp_maths.h"
 #include "vepu5xx_common.h"
 
+/* Weights are in register order B,G,R, followed by offsets Y,U,V. */
+void vepu511_get_csc(VepuFmtCfg *cfg, MppFrameFormat format,
+                     MppFrameColorSpace space, MppFrameColorRange range);
+
 #define VEPU511_CTL_OFFSET          (0 * sizeof(RK_U32)) /* 0x00000000 reg0 - 0x00000120 reg72 */
 #define VEPU511_FRAME_OFFSET        (156 * sizeof(RK_U32)) /* 0x00000270 reg156 - 0x000003fc reg255 */
 #define VEPU511_RC_ROI_OFFSET       (1024 * sizeof(RK_U32)) /* 0x00001000 reg1024 - 0x0000113c reg1103 */

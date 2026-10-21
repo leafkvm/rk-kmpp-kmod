@@ -200,6 +200,11 @@ static VepuFmtCfg vepu5xx_yuv_cfg[MPP_FMT_YUV_BUTT] = {
         .weight = zeros,
         .offset = zeros,
     },
+    [MPP_FMT_YUV444_PACKED] = {
+        .format = VEPU541_FMT_BGR888,
+        .weight = zeros,
+        .offset = zeros,
+    },
 };
 
 static VepuFmtCfg vepu5xx_rgb_cfg[MPP_FMT_RGB_BUTT - MPP_FRAME_FMT_RGB] = {

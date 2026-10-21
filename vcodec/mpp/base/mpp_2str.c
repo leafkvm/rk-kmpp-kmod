@@ -70,6 +70,11 @@ const char *strof_pixel_fmt(MppFrameFormat fmt)
         "YUV440SP",
         "YUV411SP",
         "YUV444SP",
+        "YUV444P",
+        "YUV444SP_10BIT",
+        "AYUV2BPP",
+        "AYUV1BPP",
+        "YUV444_PACKED",
     };
     static const char *rgb_fmt_str[] = {
         "RGB565",
@@ -90,7 +95,7 @@ const char *strof_pixel_fmt(MppFrameFormat fmt)
 
     if (fmt < MPP_FMT_YUV_BUTT)
         return yuv_fmt_str[fmt];
-    else if (fmt > MPP_FMT_YUV_BUTT && fmt <= MPP_FMT_RGB_BUTT)
+    else if (fmt > MPP_FMT_YUV_BUTT && fmt < MPP_FMT_RGB_BUTT)
         return rgb_fmt_str[fmt - MPP_FMT_RGB565];
 
     return NULL;

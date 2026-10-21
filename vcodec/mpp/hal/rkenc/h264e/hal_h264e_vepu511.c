@@ -826,39 +826,19 @@ static MPP_RET setup_vepu511_prep(HalVepu511RegSet *regs, MppEncPrepCfg *prep,
     } break;
     }
 
-    if (hw_fmt < VEPU541_FMT_ARGB1555) {
-        regs->reg_frm.src_udfy.csc_wgt_b2y = 29;
-        regs->reg_frm.src_udfy.csc_wgt_g2y = 150;
-        regs->reg_frm.src_udfy.csc_wgt_r2y = 77;
-
-        regs->reg_frm.src_udfu.csc_wgt_b2u = 128;
-        regs->reg_frm.src_udfu.csc_wgt_g2u = -85;
-        regs->reg_frm.src_udfu.csc_wgt_r2u = -43;
-
-        regs->reg_frm.src_udfv.csc_wgt_b2v = -21;
-        regs->reg_frm.src_udfv.csc_wgt_g2v = -107;
-        regs->reg_frm.src_udfv.csc_wgt_r2v = 128;
-
-        regs->reg_frm.src_udfo.csc_ofst_y  = 0;
-        regs->reg_frm.src_udfo.csc_ofst_u  = 128;
-        regs->reg_frm.src_udfo.csc_ofst_v  = 128;
-    } else {
-        regs->reg_frm.src_udfy.csc_wgt_b2y = cfg.weight[0];
-        regs->reg_frm.src_udfy.csc_wgt_g2y = cfg.weight[1];
-        regs->reg_frm.src_udfy.csc_wgt_r2y = cfg.weight[2];
-
-        regs->reg_frm.src_udfu.csc_wgt_b2u = cfg.weight[3];
-        regs->reg_frm.src_udfu.csc_wgt_g2u = cfg.weight[4];
-        regs->reg_frm.src_udfu.csc_wgt_r2u = cfg.weight[5];
-
-        regs->reg_frm.src_udfv.csc_wgt_b2v = cfg.weight[6];
-        regs->reg_frm.src_udfv.csc_wgt_g2v = cfg.weight[7];
-        regs->reg_frm.src_udfv.csc_wgt_r2v = cfg.weight[8];
-
-        regs->reg_frm.src_udfo.csc_ofst_y  = cfg.offset[0];
-        regs->reg_frm.src_udfo.csc_ofst_u  = cfg.offset[1];
-        regs->reg_frm.src_udfo.csc_ofst_v  = cfg.offset[2];
-    }
+    vepu511_get_csc(&cfg, prep->format, prep->color, prep->range);
+    regs->reg_frm.src_udfy.csc_wgt_b2y = cfg.weight[0];
+    regs->reg_frm.src_udfy.csc_wgt_g2y = cfg.weight[1];
+    regs->reg_frm.src_udfy.csc_wgt_r2y = cfg.weight[2];
+    regs->reg_frm.src_udfu.csc_wgt_b2u = cfg.weight[3];
+    regs->reg_frm.src_udfu.csc_wgt_g2u = cfg.weight[4];
+    regs->reg_frm.src_udfu.csc_wgt_r2u = cfg.weight[5];
+    regs->reg_frm.src_udfv.csc_wgt_b2v = cfg.weight[6];
+    regs->reg_frm.src_udfv.csc_wgt_g2v = cfg.weight[7];
+    regs->reg_frm.src_udfv.csc_wgt_r2v = cfg.weight[8];
+    regs->reg_frm.src_udfo.csc_ofst_y = cfg.offset[0];
+    regs->reg_frm.src_udfo.csc_ofst_u = cfg.offset[1];
+    regs->reg_frm.src_udfo.csc_ofst_v = cfg.offset[2];
 
     regs->reg_frm.src_strd0.src_strd0  = y_stride;
     regs->reg_frm.src_strd1.src_strd1  = c_stride;

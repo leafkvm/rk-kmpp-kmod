@@ -240,6 +240,8 @@ typedef enum {
     MPP_FMT_YUV444SP_10BIT  = (MPP_FRAME_FMT_YUV + 17),
     MPP_FMT_AYUV2BPP        = (MPP_FRAME_FMT_YUV + 18),
     MPP_FMT_AYUV1BPP        = (MPP_FRAME_FMT_YUV + 19),
+    /* Packed bytes Y,U,V. VEPU511 fetches through its three-channel reader. */
+    MPP_FMT_YUV444_PACKED  = (MPP_FRAME_FMT_YUV + 20),
     MPP_FMT_YUV_BUTT,
 
     MPP_FMT_RGB565          = (MPP_FRAME_FMT_RGB + 0),  /* 16-bit RGB               */

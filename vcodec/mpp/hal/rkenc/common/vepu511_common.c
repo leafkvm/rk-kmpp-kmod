@@ -378,23 +378,21 @@ MPP_RET vepu511_set_jpeg_reg(Vepu511JpegCfg * cfg)
     if (regs->src_fmt.src_cfmt == VEPU540C_FMT_YUV444SP)
         stridec = stridey * 2;
 
-    if (regs->src_fmt.src_cfmt < VEPU541_FMT_ARGB1555) {
-        regs->src_udfy.csc_wgt_r2y = 77;
-        regs->src_udfy.csc_wgt_g2y = 150;
-        regs->src_udfy.csc_wgt_b2y = 29;
+    VepuFmtCfg csc = *fmt;
+    vepu511_get_csc(&csc, syn->format, MPP_FRAME_SPC_SMPTE170M, src_range);
+    regs->src_udfy.csc_wgt_b2y = csc.weight[0];
+    regs->src_udfy.csc_wgt_g2y = csc.weight[1];
+    regs->src_udfy.csc_wgt_r2y = csc.weight[2];
+    regs->src_udfu.csc_wgt_b2u = csc.weight[3];
+    regs->src_udfu.csc_wgt_g2u = csc.weight[4];
+    regs->src_udfu.csc_wgt_r2u = csc.weight[5];
+    regs->src_udfv.csc_wgt_b2v = csc.weight[6];
+    regs->src_udfv.csc_wgt_g2v = csc.weight[7];
+    regs->src_udfv.csc_wgt_r2v = csc.weight[8];
+    regs->src_udfo.csc_ofst_y = csc.offset[0];
+    regs->src_udfo.csc_ofst_u = csc.offset[1];
+    regs->src_udfo.csc_ofst_v = csc.offset[2];
 
-        regs->src_udfu.csc_wgt_r2u = -43;
-        regs->src_udfu.csc_wgt_g2u = -85;
-        regs->src_udfu.csc_wgt_b2u = 128;
-
-        regs->src_udfv.csc_wgt_r2v = 128;
-        regs->src_udfv.csc_wgt_g2v = -107;
-        regs->src_udfv.csc_wgt_b2v = -21;
-
-        regs->src_udfo.csc_ofst_y = 0;
-        regs->src_udfo.csc_ofst_u = 128;
-        regs->src_udfo.csc_ofst_v = 128;
-    }
     regs->src_strd0.src_strd0 = stridey;
     regs->src_strd1.src_strd1 = stridec;
     kmpp_frame_get_offset_y(task->frame, &offset_y);
@@ -434,4 +432,41 @@ MPP_RET vepu511_set_jpeg_reg(Vepu511JpegCfg * cfg)
     regs->uvc_cfg.uvc_skip_len = 0;
 
     return MPP_OK;
+}
+
+/* VEPU511 has signed Q8 coefficients: +256 is not representable. Packed
+ * YUV444 therefore uses 255/256*x+1: legal limited samples are exact and
+ * full-range zero becomes one. Keep this local to the explicit packed format;
+ * ordinary RGB must always use the signalled RGB-to-YUV matrix.
+ */
+void vepu511_get_csc(VepuFmtCfg *cfg, MppFrameFormat format,
+                     MppFrameColorSpace space, MppFrameColorRange range)
+{
+    static const RK_S32 packed[9] = {0, 0, 255, 0, 255, 0, 255, 0, 0};
+    static const RK_S32 packed_offset[3] = {1, 1, 1};
+    /* B,G,R. Limited RGB keeps its luma range; chroma has 224 steps
+     * for 219 RGB steps. Full RGB has 255 steps for both.
+     */
+    static const RK_S32 rgb[3][2][9] = {
+        { {29,150,77, 128,-85,-43, -21,-107,128},
+          {29,150,77, 131,-87,-44, -21,-110,131} },
+        { {18,183,55, 128,-99,-29, -12,-116,128},
+          {18,183,55, 131,-101,-30, -12,-119,131} },
+        { {15,174,67, 128,-92,-36, -10,-118,128},
+          {15,174,67, 131,-94,-37, -11,-120,131} },
+    };
+    static const RK_S32 rgb_offset[3] = {0, 128, 128};
+    RK_U32 matrix = 0;
+
+    if ((format & MPP_FRAME_FMT_MASK) == MPP_FMT_YUV444_PACKED) {
+        cfg->weight = packed;
+        cfg->offset = packed_offset;
+    } else if (MPP_FRAME_FMT_IS_RGB(format)) {
+        if (space == MPP_FRAME_SPC_BT709)
+            matrix = 1;
+        else if (space == MPP_FRAME_SPC_BT2020_NCL)
+            matrix = 2;
+        cfg->weight = rgb[matrix][range == MPP_FRAME_RANGE_MPEG];
+        cfg->offset = rgb_offset;
+    }
 }
