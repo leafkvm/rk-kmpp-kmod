@@ -45,6 +45,22 @@ typedef struct KmppPacketImpl_t {
     KmppShmPtr pos;
     KmppShmPtr buffer;
     KmppShmPtr meta;
+    /* leafkvm: per-frame encoder feedback, see KMPP_PACKET_ENTRY_TABLE */
+    rk_u32 enc_valid;
+    rk_s32 enc_bit_target;
+    rk_s32 enc_bit_real;
+    rk_s32 enc_qp_avg;
+    rk_s32 enc_qp_target;
+    rk_s32 enc_qp_min;
+    rk_s32 enc_qp_max;
+    rk_u32 enc_qp_out;
+    rk_s32 enc_madi;
+    rk_s32 enc_madp;
+    rk_u32 enc_iblk4_prop;
+    rk_u32 enc_motion_lvl;
+    rk_u32 enc_cplx_lvl;
+    rk_u32 enc_luma_ave;
+    rk_u32 enc_rc_reinit;
     RingBuf buf;
 } KmppPacketImpl;
 

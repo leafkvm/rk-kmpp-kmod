@@ -1474,6 +1474,12 @@ MPP_RET mpp_enc_proc_rc_update(MppEncImpl *enc)
         enc_dbg_rc_flow("rc %s update cfg start\n", rc_api_name(enc->rc_ctx));
 
         ret = rc_update_usr_cfg(enc->rc_ctx, enc->cfg_obj);
+        /*
+         * leafkvm: count rc model inits (rc_model_init -> bits_model_init for
+         * the AVBR/CBR model); every one after the first is a re-init by a
+         * runtime cfg change, exported per packet as enc_rc_reinit.
+         */
+        enc->rc_init_cnt++;
         *mpp_enc_cfg_rc_change(cfg) = 0;
 
         enc_dbg_rc_flow("rc %s update cfg done\n", rc_api_name(enc->rc_ctx));
@@ -2506,6 +2512,32 @@ TASK_DONE:
     return ret;
 }
 
+/* leafkvm: copy the frame's rc feedback (after rc_frm_end) into the packet */
+static void mpp_enc_set_pkt_stats(MppEncImpl *enc, KmppPacket packet)
+{
+    KmppPacketImpl *p = (KmppPacketImpl *)kmpp_obj_to_entry(packet);
+    EncRcTaskInfo *info = &enc->rc_task.info;
+
+    if (!p)
+        return;
+
+    p->enc_valid = 1;
+    p->enc_bit_target = info->bit_target;
+    p->enc_bit_real = info->bit_real;
+    p->enc_qp_avg = info->quality_real;
+    p->enc_qp_target = info->quality_target;
+    p->enc_qp_min = info->quality_min;
+    p->enc_qp_max = info->quality_max;
+    p->enc_qp_out = enc->rc_task.qp_out;
+    p->enc_madi = info->madi;
+    p->enc_madp = info->madp;
+    p->enc_iblk4_prop = info->iblk4_prop;
+    p->enc_motion_lvl = info->motion_level;
+    p->enc_cplx_lvl = info->complex_level;
+    p->enc_luma_ave = info->dsp_luma_ave;
+    p->enc_rc_reinit = enc->rc_init_cnt ? enc->rc_init_cnt - 1 : 0;
+}
+
 MPP_RET mpp_enc_impl_int(MppEnc ctx, MppEnc jpeg_ctx, KmppPacket *packet,
                          KmppPacket *jpeg_packet)
 {
@@ -2618,6 +2650,7 @@ TASK_DONE:
         if (eos)
             kmpp_packet_set_flag(enc->packet, KMPP_PACKET_FLAG_EOS);
         kmpp_packet_set_temporal_id(enc->packet, frm->temporal_id);
+        mpp_enc_set_pkt_stats(enc, enc->packet);
         if (kmpp_packet_ring_buf_put_used(enc->packet))
             kmpp_loge_f("kmpp_packet_ring_buf_put_used fail\n");
     }
