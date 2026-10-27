@@ -81,6 +81,14 @@ MPP_RET h264e_sei_recovery_point_to_packet(KmppPacket packet, RK_S32 *len, RK_U3
     mpp_writer_put_bits(bit, payload_size - i, 8);
 
     write_recovery_point(bit, recovery_frame_cnt);
+    /*
+     * leafkvm: rbsp_trailing_bits of the SEI NAL. write_recovery_point() ends with
+     * the payload's own byte alignment, so without this the NAL's stop bit is the
+     * payload's alignment bit and the payload reads one bit short: FFmpeg logs
+     * "SEI type 6 size 2 truncated at 1" and, with AV_EF_EXPLODE (Chrome's
+     * software H.264 decoder), fails that frame, once per GDR cycle.
+     */
+    mpp_writer_trailing(bit);
 
     sei_size = mpp_writer_bytes(bit);
     if (len)

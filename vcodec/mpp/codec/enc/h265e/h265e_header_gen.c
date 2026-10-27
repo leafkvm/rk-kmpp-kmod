@@ -256,6 +256,8 @@ static MPP_RET h265e_sei_write(H265eStream * s, RK_U8 uuid[16], const RK_U8 * pa
     } break;
     case H265_SEI_RECOVERY_POINT: {
         h265e_write_recovery_point(s, ((RK_U32 *)payload)[0]);
+        /* leafkvm: NAL rbsp_trailing_bits, see h264e_sei.c (payload alignment != NAL trailing) */
+        h265e_stream_rbsp_trailing(s);
     } break;
     default: {
         kmpp_err_f("payload_type %d is no process ", payload_type);
