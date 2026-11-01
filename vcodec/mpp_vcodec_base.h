@@ -6,6 +6,8 @@
 #ifndef __ROCKCHIP_MPP_VCODEC_BASE_H__
 #define __ROCKCHIP_MPP_VCODEC_BASE_H__
 
+#include <linux/rwsem.h>
+
 #include "kmpp_spinlock.h"
 #include "kmpp_mutex.h"
 #include "kmpp_atomic.h"
@@ -14,6 +16,7 @@
 #include "kmpp_wait.h"
 #include "kmpp_list.h"
 #include "kmpp_venc_objs.h"
+#include "mpp_rkvenc_prog.h"
 
 #define MAX_ENC_NUM 32
 #define MAX_FRAME_NUM 2
@@ -48,6 +51,9 @@ struct mpp_chan {
     KmppSpinlock *chan_lock;
     /* protect debug info when destory channel */
     KmppMutex *chan_mutex;
+    /* Progress readers pin resources; create/destroy take exclusive access.
+     * Initialized once for the static channel, never reset on reuse. */
+    struct rw_semaphore prog_lifetime;
     void *handle;
     KmppWait *wait;
     KmppWait *stop_wait;
@@ -78,6 +84,11 @@ struct mpp_chan {
     kmpp_list_head frm_list;
     KmppSpinlock *pkt_lock;
     kmpp_list_head pkt_list;
+    /* leafkvm progressive input, under rkvenc_prog_lock (mpp_vcodec_prog.c) */
+    struct rkvenc_prog_slot prog_slot[RKVENC_PROG_SLOTS];
+    struct rkvenc_prog_slot *prog_active;
+    RK_S64 prog_last_dts;
+    RK_U32 prog_have_dts;
 };
 
 struct venc_module {

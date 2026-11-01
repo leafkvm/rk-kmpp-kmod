@@ -81,6 +81,10 @@ typedef struct KmppFrameImpl_t {
     RK_U32 is_gray;
 
     KmppShmPtr meta;
+
+    /* leafkvm progressive input, see include/rk-vcodec-prog.h */
+    RK_U32 in_flags;
+    RK_U32 ready_rows;
 } KmppFrameImpl;
 
 #endif /* __KMPP_FRAME_IMPL_H__ */

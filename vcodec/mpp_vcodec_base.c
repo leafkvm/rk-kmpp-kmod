@@ -12,6 +12,7 @@
 #include "kmpp_log.h"
 #include "kmpp_module.h"
 
+#include "mpp_vcodec_prog.h"
 #include "mpp_vcodec_base.h"
 #include "mpp_vcodec_debug.h"
 #include "mpp_vcodec_flow.h"
@@ -352,6 +353,7 @@ int mpp_vcodec_chan_entry_init(struct mpp_chan *entry, MppCtxType type,
     KMPP_INIT_LIST_HEAD(&entry->frm_list);
     entry->state = CHAN_STATE_SUSPEND_PENDING;
     kmpp_spin_unlock_irqrestore(entry->chan_lock, &lock_flag);
+    mpp_vcodec_prog_reset(entry);
 
     return 0;
 }
@@ -516,6 +518,7 @@ int mpp_vcodec_init(void)
         curr_entry->handle = NULL;
         kmpp_spinlock_init(&curr_entry->chan_lock);
         kmpp_mutex_init(&curr_entry->chan_mutex);
+        init_rwsem(&curr_entry->prog_lifetime);
         kmpp_wait_init(&curr_entry->wait);
         kmpp_wait_init(&curr_entry->stop_wait);
         kmpp_spinlock_init(&curr_entry->pkt_lock);

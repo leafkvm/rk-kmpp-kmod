@@ -16,6 +16,7 @@
 #include "mpp_vcodec_chan.h"
 #include "mpp_vcodec_flow.h"
 #include "mpp_vcodec_debug.h"
+#include "mpp_vcodec_prog.h"
 
 static rk_s32 check_chan_idle(const void *param)
 {
@@ -36,12 +37,14 @@ rk_s32 kmpp_venc_chan_init(KmppChanId *id, KmppVencInitCfg cfg)
 
     chan = mpp_vcodec_get_chan_entry(chan_id, MPP_CTX_ENC);
 
+    down_write(&chan->prog_lifetime);
     cfg_impl->chan_id = chan_id;
     cfg_impl->shared_buf = &chan->shared_buf;
 
     ret = mpp_enc_init(&enc, cfg_impl);
     if (ret) {
         kmpp_loge_f("mpp_enc_init failed ret %d\n", ret);
+        up_write(&chan->prog_lifetime);
         return ret;
     }
 
@@ -50,6 +53,7 @@ rk_s32 kmpp_venc_chan_init(KmppChanId *id, KmppVencInitCfg cfg)
 
     *id = chan_id;
 
+    up_write(&chan->prog_lifetime);
     return ret;
 }
 
@@ -60,8 +64,13 @@ rk_s32 kmpp_venc_chan_deinit(KmppChanId id, KmppVencDeinitCfg cfg)
     KmppChanId chan_id = id;
 
     chan = mpp_vcodec_get_chan_entry(chan_id, MPP_CTX_ENC);
-    if (!chan || !chan->handle) {
+    if (!chan) {
         kmpp_loge_f("invalid chan id %d\n", chan_id);
+        return MPP_NOK;
+    }
+    down_write(&chan->prog_lifetime);
+    if (!chan->handle) {
+        up_write(&chan->prog_lifetime);
         return MPP_NOK;
     }
     kmpp_logi_f("destroy chan %d hnd %p online %d combo %d mst %d\n",
@@ -69,6 +78,7 @@ rk_s32 kmpp_venc_chan_deinit(KmppChanId id, KmppVencDeinitCfg cfg)
                 chan->binder_chan_id, chan->master_chan_id);
 
     kmpp_venc_chan_stop(chan_id, cfg);
+    mpp_vcodec_prog_abort_all(chan);
     if (chan->cfg.online) {
         struct mpp_chan *chan_tmp = chan;
 
@@ -89,8 +99,10 @@ rk_s32 kmpp_venc_chan_deinit(KmppChanId id, KmppVencDeinitCfg cfg)
     kmpp_mutex_lock(chan->chan_mutex);
     mpp_enc_deinit(chan->handle);
     mpp_vcodec_stream_clear(chan);
+    mpp_vcodec_prog_reset(chan);
     mpp_vcodec_chan_entry_deinit(chan);
     kmpp_mutex_unlock(chan->chan_mutex);
+    up_write(&chan->prog_lifetime);
 
     kmpp_logi_f("destroy chan %d done\n", chan_id);
 

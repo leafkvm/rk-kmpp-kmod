@@ -41,7 +41,10 @@
     ENTRY(prefix, u32, rk_u32,      enc_motion_lvl, FLAG_NONE,  enc_motion_lvl) \
     ENTRY(prefix, u32, rk_u32,      enc_cplx_lvl,   FLAG_NONE,  enc_cplx_lvl) \
     ENTRY(prefix, u32, rk_u32,      enc_luma_ave,   FLAG_NONE,  enc_luma_ave) \
-    ENTRY(prefix, u32, rk_u32,      enc_rc_reinit,  FLAG_NONE,  enc_rc_reinit)
+    ENTRY(prefix, u32, rk_u32,      enc_rc_reinit,  FLAG_NONE,  enc_rc_reinit) \
+    ENTRY(prefix, u32, rk_u32,      in_status,      FLAG_NONE,  in_status) \
+    ENTRY(prefix, u32, rk_u32,      in_rows_start,  FLAG_NONE,  in_rows_start) \
+    ENTRY(prefix, u32, rk_u32,      in_tail_us,     FLAG_NONE,  in_tail_us)
 
 #define KMPP_OBJ_NAME           kmpp_packet
 #define KMPP_OBJ_INTF_TYPE      KmppPacket

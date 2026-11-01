@@ -15,6 +15,7 @@ ${KMPP_SRC}-objs += vcodec/mpp_vcodec_base.o \
                     vcodec/mpp_vcodec_flow.o \
                     vcodec/mpp_vcodec_thread.o \
                     vcodec/mpp_vcodec_driver.o \
+                    vcodec/mpp_vcodec_prog.o \
                     vcodec/osal/mpp_maths.o \
                     vcodec/osal/mpp_device.o \
                     vcodec/osal/osal_mpp_service.o

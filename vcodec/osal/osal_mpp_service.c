@@ -21,6 +21,8 @@ typedef struct MppDevMppService_t {
 
     RK_S32 req_cnt;
     MppReqV1 reqs[MAX_REQ_NUM];
+    /* leafkvm: progressive input slot for the next cmd_send */
+    void *prog;
 } MppDevMppService;
 
 MPP_RET mpp_service_init(void *ctx, MppDevCfg *cfg)
@@ -105,7 +107,11 @@ MPP_RET mpp_service_cmd_send(void *ctx)
             p->reqs[i].flag |= MPP_FLAGS_MULTI_MSG;
     }
     p->reqs[p->req_cnt - 1].flag |= MPP_FLAGS_LAST_MSG | MPP_FLAGS_REG_FD_NO_TRANS;
+    /* the slot goes with the first task sent after mpp_service_set_prog() */
+    kmpp_session_set_prog(p->session, p->prog);
+    p->prog = NULL;
     ret = kmpp_session_add_req(p->session, &p->reqs[0]);
+    kmpp_session_set_prog(p->session, NULL);
     p->req_cnt = 0;
 
     return ret;
@@ -144,6 +150,13 @@ RK_S32 mpp_service_chnl_check_running(void *ctx)
     return kmpp_session_is_running(p->session);
 }
 
+static void mpp_service_set_prog(void *ctx, void *prog)
+{
+    MppDevMppService *p = (MppDevMppService *)ctx;
+
+    p->prog = prog;
+}
+
 RK_S32 mpp_service_chnl_control(void *ctx, RK_U32 cmd, void *param)
 {
     MppDevMppService *p = (MppDevMppService *) ctx;
@@ -169,4 +182,5 @@ const MppDevApi mpp_service_api = {
     .run_task           = mpp_service_run_task,
     .chnl_check_running = mpp_service_chnl_check_running,
     .control            = mpp_service_chnl_control,
+    .set_prog           = mpp_service_set_prog,
 };

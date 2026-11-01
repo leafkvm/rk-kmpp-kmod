@@ -19,6 +19,7 @@
 #include "mpp_vcodec_thread.h"
 #include "mpp_vcodec_chan.h"
 #include "mpp_vcodec_flow.h"
+#include "mpp_vcodec_prog.h"
 
 typedef struct KmppVencCtx_t {
     MppEnc enc;
@@ -49,11 +50,13 @@ rk_s32 kmpp_venc_init(KmppCtx *ctx, KmppVencInitCfg cfg)
     p = mpp_calloc(KmppVencCtx, 1);
     if (!p)
         return MPP_NOK;
+    down_write(&chan->prog_lifetime);
     cfg_impl->shared_buf = &chan->shared_buf;
     ret = mpp_enc_init(&enc, cfg_impl);
     if (ret) {
         kmpp_loge_f("mpp_enc_init failed ret %d\n", ret);
         mpp_free(p);
+        up_write(&chan->prog_lifetime);
         return ret;
     }
 
@@ -65,6 +68,7 @@ rk_s32 kmpp_venc_init(KmppCtx *ctx, KmppVencInitCfg cfg)
     p->enc = enc;
     *ctx = p;
 
+    up_write(&chan->prog_lifetime);
     return ret;
 }
 
@@ -84,11 +88,13 @@ rk_s32 kmpp_venc_deinit(KmppCtx ctx, KmppVencDeinitCfg cfg)
     chan_id = p->chan_id;
     chan = mpp_vcodec_get_chan_entry(chan_id, MPP_CTX_ENC);
 
+    down_write(&chan->prog_lifetime);
     kmpp_logi_f("destroy chan %d hnd %p online %d combo %d mst %d\n",
                 chan_id, chan->handle, chan->cfg.online,
                 chan->binder_chan_id, chan->master_chan_id);
 
     kmpp_venc_stop(ctx, cfg);
+    mpp_vcodec_prog_abort_all(chan);
     if (chan->cfg.online) {
         struct mpp_chan *chan_tmp = chan;
 
@@ -109,8 +115,10 @@ rk_s32 kmpp_venc_deinit(KmppCtx ctx, KmppVencDeinitCfg cfg)
     kmpp_mutex_lock(chan->chan_mutex);
     mpp_enc_deinit(chan->handle);
     mpp_vcodec_stream_clear(chan);
+    mpp_vcodec_prog_reset(chan);
     mpp_vcodec_chan_entry_deinit(chan);
     kmpp_mutex_unlock(chan->chan_mutex);
+    up_write(&chan->prog_lifetime);
 
     mpp_free(p);
     kmpp_logi_f("destroy chan %d done\n", chan_id);

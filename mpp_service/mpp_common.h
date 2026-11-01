@@ -477,6 +477,8 @@ struct mpp_session {
     KmppSessionHook callback;
 
     void *session_obj;
+    /* leafkvm: progressive input slot for the next task sent, or NULL */
+    void *prog_next;
 };
 
 /* task state in work thread */
@@ -589,6 +591,8 @@ struct mpp_task {
     u32 frame_id;
     u32 width;
     u32 height;
+    /* leafkvm: progressive input slot (struct rkvenc_prog_slot), or NULL */
+    void *prog;
 };
 
 struct mpp_taskqueue {

@@ -176,6 +176,10 @@ MPP_RET mpp_enc_run_task(MppEnc ctx, RK_S64 pts, RK_S64 dts);
 MPP_RET mpp_enc_online_task_failed(MppEnc ctx);
 RK_S32 mpp_enc_check_hw_running(MppEnc ctx);
 RK_S32 mpp_enc_unbind_jpeg_task(MppEnc ctx);
+/* leafkvm progressive input */
+MPP_RET mpp_enc_prog_check(MppEnc ctx, RK_U32 gated);
+MPP_RET mpp_enc_set_prog(MppEnc ctx, void *slot);
+void mpp_enc_set_prog_discard(MppEnc ctx);
 rk_bool mpp_enc_check_is_int_process(MppEnc ctx);
 MPP_RET mpp_enc_set_online_mode(MppEnc ctx, RK_U32 mode);
 

@@ -103,6 +103,12 @@ MPP_RET mpp_dev_ioctl(MppDev ctx, RK_S32 cmd, void *param)
         if (api->run_task)
             ret = api->run_task(impl_ctx, param);
     } break;
+    case MPP_DEV_SET_PROG: {
+        if (api->set_prog)
+            api->set_prog(impl_ctx, param);
+        else if (param)
+            ret = MPP_NOK;
+    } break;
     default: {
         kmpp_loge_f("invalid cmd %d\n", cmd);
     } break;

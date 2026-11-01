@@ -9,6 +9,7 @@
 #include "kmpp_uaccess.h"
 
 #include "mpp_vcodec_chan.h"
+#include "mpp_vcodec_prog.h"
 #include "mpp_vcodec_base.h"
 #include "mpp_vcodec_debug.h"
 #include "mpp_vcodec_flow.h"
@@ -79,6 +80,7 @@ int mpp_vcodec_chan_create(KmppVencInitCfg init_cfg)
     chan_entry = mpp_vcodec_get_chan_entry(chan_id, type);
     num_chan = mpp_vcodec_get_chan_num(type);
 
+    down_write(&chan_entry->prog_lifetime);
     switch (type) {
     case MPP_CTX_DEC: {
 
@@ -96,6 +98,7 @@ int mpp_vcodec_chan_create(KmppVencInitCfg init_cfg)
         if (mpp_vcodec_chan_setup_hal_bufs(chan_entry, attr)) {
             mpp_enc_deinit(chan_entry->handle);
             mpp_vcodec_chan_entry_deinit(chan_entry);
+            up_write(&chan_entry->prog_lifetime);
             return -1;
         }
 #endif
@@ -118,6 +121,7 @@ int mpp_vcodec_chan_create(KmppVencInitCfg init_cfg)
         mpp_vcodec_chan_entry_deinit(chan_entry);
         kmpp_loge_f("create chan %d fail\n", chan_id);
     }
+    up_write(&chan_entry->prog_lifetime);
 
     return 0;
 }
@@ -157,8 +161,16 @@ int mpp_vcodec_chan_destory(int chan_id, MppCtxType type)
     struct mpp_chan *chan_entry = mpp_vcodec_get_chan_entry(chan_id, type);
     int ret;
 
-    if (!chan_entry || !chan_entry->handle)
+    if (!chan_entry)
         return 0;
+
+    /* Drain progress, including record emission, before touching its lists
+     * or counters. New progress calls fail promptly during destruction. */
+    down_write(&chan_entry->prog_lifetime);
+    if (!chan_entry->handle) {
+        up_write(&chan_entry->prog_lifetime);
+        return 0;
+    }
 
     switch (type) {
     case MPP_CTX_DEC: {
@@ -173,6 +185,8 @@ int mpp_vcodec_chan_destory(int chan_id, MppCtxType type)
                     chan_entry->binder_chan_id, chan_entry->master_chan_id);
 
         ret = mpp_vcodec_chan_stop(chan_id, type);
+        /* leafkvm: open every progressive gate so the running task ends */
+        mpp_vcodec_prog_abort_all(chan_entry);
         if (chan_entry->cfg.online) {
             struct mpp_chan *chan_tmp = chan_entry;
 
@@ -232,6 +246,7 @@ int mpp_vcodec_chan_destory(int chan_id, MppCtxType type)
         if (chan_entry->cfg.online)
             mpp_vcodec_chan_unbind(chan_entry);
         mpp_vcodec_stream_clear(chan_entry);
+        mpp_vcodec_prog_reset(chan_entry);
         mpp_enc_deinit(chan_entry->handle);
         mpp_vcodec_chan_entry_deinit(chan_entry);
         kmpp_mutex_unlock(chan_entry->chan_mutex);
@@ -242,6 +257,7 @@ int mpp_vcodec_chan_destory(int chan_id, MppCtxType type)
     } break;
     }
 
+    up_write(&chan_entry->prog_lifetime);
     return 0;
 }
 
@@ -260,11 +276,20 @@ int mpp_vcodec_chan_start(int chan_id, MppCtxType type)
     case MPP_CTX_ENC: {
         unsigned long lock_flag;
 
+        bool queued;
+
         mpp_enc_start(chan_entry->handle);
         kmpp_spin_lock_irqsave(chan_entry->chan_lock, &lock_flag);
         chan_entry->state = CHAN_STATE_RUN;
+        queued = !kmpp_list_empty(&chan_entry->frm_list);
         kmpp_spin_unlock_irqrestore(chan_entry->chan_lock, &lock_flag);
         enc_chan_update_chan_prior_tab();
+        /*
+         * leafkvm: frames queued while stopped would otherwise wait for the
+         * next VCODEC_CHAN_IN_FRM_RDY to wake the encode worker.
+         */
+        if (queued)
+            vcodec_thread_trigger(mpp_vcodec_get_enc_module_entry()->thd);
     } break;
     default: {
         kmpp_loge_f("create chan error type %d\n", type);
@@ -287,7 +312,13 @@ int mpp_vcodec_chan_stop(int chan_id, MppCtxType type)
     case MPP_CTX_ENC: {
         unsigned long lock_flag;
 
-        ret = mpp_enc_stop(chan_entry->handle);
+        /*
+         * leafkvm: mpp_enc_stop() returns hw_run (busy), not an error; passing
+         * it on made VCODEC_CHAN_STOP fail with -EINVAL whenever a task was on
+         * the hardware (always, during a progressive hold), after the stop had
+         * already taken effect.
+         */
+        mpp_enc_stop(chan_entry->handle);
         kmpp_spin_lock_irqsave(chan_entry->chan_lock, &lock_flag);
         if (chan_entry->state != CHAN_STATE_RUN) {
             kmpp_spin_unlock_irqrestore(chan_entry->chan_lock, &lock_flag);
@@ -444,6 +475,7 @@ int mpp_vcodec_chan_push_frm(int chan_id, void *param)
     RK_S64 pts, dts;
     RK_U32 eos, buf_fd;
     rk_ul flags;
+    int ret;
 
     chan_entry = mpp_vcodec_get_chan_entry(chan_id, MPP_CTX_ENC);
     venc = mpp_vcodec_get_enc_module_entry();
@@ -462,6 +494,14 @@ int mpp_vcodec_chan_push_frm(int chan_id, void *param)
     ioc = (KmppObjShm *)param;
     shm = (KmppShm)(uintptr_t)ioc->kobj_kaddr;
     frame = kmpp_shm_get_kpriv(shm);
+
+    /* leafkvm: tracked / progressive input (-EINVAL, -EAGAIN) */
+    ret = mpp_vcodec_prog_submit(chan_entry, frame);
+    if (ret) {
+        if (ret == -EAGAIN)
+            vcodec_thread_trigger(thd);
+        return ret;
+    }
 
     kmpp_frame_get_buf_fd(frame, &buf_fd);
     if (buf_fd) {
@@ -515,6 +555,12 @@ static int mpp_vcodec_chan_change_coding_type(int chan_id, void *arg)
     MppEncCfgSet *cfg_impl = NULL;
     bool wait = true;
     int ret;
+
+    /* Live codec replacement resets the packet queue and DTS history.
+     * Tracked callers need those records to release their buffers: use
+     * channel destruction/recreation instead, as leafkvm-rs does. */
+    if (READ_ONCE(entry->prog_have_dts))
+        return -EINVAL;
 
     ret = kmpp_venc_st_cfg_get(&cfg);
     if (ret) {
@@ -595,7 +641,7 @@ int mpp_vcodec_chan_control(int chan_id, MppCtxType type, int cmd, void *arg)
             }
 
             cfg = kmpp_shm_get_kpriv(shm);
-            mpp_vcodec_chan_change_coding_type(chan_id, cfg);
+            return mpp_vcodec_chan_change_coding_type(chan_id, cfg);
         } else if (cmd == MPP_ENC_SET_CFG || cmd == MPP_ENC_GET_CFG) {
             KmppObjShm *ioc = (KmppObjShm *)arg;
             KmppShm shm = (KmppShm)(uintptr_t)ioc->kobj_kaddr;

@@ -26,6 +26,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/nospec.h>
 #include <linux/workqueue.h>
+#include <linux/hrtimer.h>
 #include <linux/version.h>
 #include <soc/rockchip/pm_domains.h>
 #include <soc/rockchip/rockchip_ipa.h>
@@ -42,6 +43,8 @@
 #include "mpp_iommu.h"
 #include "mpp_common.h"
 #include "mpp_rkvenc_dvbm.h"
+#include "mpp_rkvenc_prog.h"
+#include "rk-vcodec-prog.h"
 
 #define RKVENC_DRIVER_NAME              "mpp_rkvenc2"
 
@@ -1764,6 +1767,190 @@ static int rkvenc_pp_run(struct mpp_dev *mpp, struct mpp_task *mpp_task)
     return 0;
 }
 
+/*
+ * Progressive input (leafkvm), see mpp_rkvenc_prog.h. The register sequence
+ * is the one validated in the step-2 experiment: an ordinary task with its
+ * normal source addresses, enc_id ch_id + vinf_req_en + vrsp_rtn_en, the
+ * software line count in vs_ldly, and dvbm_cfg dvbm_en + vinf_dly 2 with the
+ * isp/vepu connect sequence. The encoder never reads source row >= lcnt.
+ */
+DEFINE_SPINLOCK(rkvenc_prog_lock);
+EXPORT_SYMBOL(rkvenc_prog_lock);
+
+static unsigned int prog_stall_ms = 200;
+module_param(prog_stall_ms, uint, 0644);
+MODULE_PARM_DESC(prog_stall_ms,
+                 "progressive input: open the gate after this many ms without progress (0 = never)");
+
+#define RKVENC_PROG_ENC_ID          0x308
+#define RKVENC_PROG_VS_LDLY         0x18
+#define RKVENC_PROG_DVBM_CFG        0x60
+/* vswm_lcnt_soft, vswm_fcnt_soft 0, dvbm_ack_soft, dvbm_ack_sel, dvbm_inf_sel */
+#define RKVENC_PROG_LDLY(lcnt)      (((lcnt) & 0x3fff) | BIT(24) | BIT(25) | BIT(26))
+#define RKVENC_PROG_TICK_NS         (10 * NSEC_PER_MSEC)
+
+/* the gated pass on the hardware (one VEPU511 core), under rkvenc_prog_lock */
+static struct rkvenc_prog_slot *rkvenc_prog_cur;
+/* dvbm_cfg left set by a gated pass, cleared before the next task */
+static u32 rkvenc_prog_dirty;
+static struct hrtimer rkvenc_prog_timer;
+static u32 rkvenc_prog_timer_ready;
+
+void rkvenc_prog_update(struct rkvenc_prog_slot *slot)
+{
+    lockdep_assert_held(&rkvenc_prog_lock);
+
+    if (slot->mpp && slot == rkvenc_prog_cur)
+        mpp_write(slot->mpp, RKVENC_PROG_VS_LDLY,
+                  RKVENC_PROG_LDLY(min(slot->rows, slot->height)));
+}
+EXPORT_SYMBOL(rkvenc_prog_update);
+
+void rkvenc_prog_release(struct rkvenc_prog_slot *slot)
+{
+    lockdep_assert_held(&rkvenc_prog_lock);
+
+    if (slot->rows < slot->height)
+        slot->rows = slot->height;
+    rkvenc_prog_update(slot);
+}
+EXPORT_SYMBOL(rkvenc_prog_release);
+
+static void rkvenc_prog_detach(struct rkvenc_prog_slot *slot)
+{
+    slot->mpp = NULL;
+    if (rkvenc_prog_cur == slot)
+        rkvenc_prog_cur = NULL;
+}
+
+/* stall watchdog: runs every 10 ms while a gated pass waits for rows */
+static enum hrtimer_restart rkvenc_prog_tick(struct hrtimer *t)
+{
+    enum hrtimer_restart ret = HRTIMER_NORESTART;
+    struct rkvenc_prog_slot *slot;
+    unsigned long flags;
+    u64 now, last;
+
+    spin_lock_irqsave(&rkvenc_prog_lock, flags);
+    slot = rkvenc_prog_cur;
+    if (slot && slot->mpp && slot->rows < slot->height && prog_stall_ms) {
+        now = ktime_get_ns();
+        last = max(slot->update_ns, slot->run_ns);
+        if (now - last >= (u64)prog_stall_ms * NSEC_PER_MSEC) {
+            if (slot->status == KMPP_IN_STATUS_ENCODED)
+                slot->status = KMPP_IN_STATUS_STALLED;
+            pr_warn("rkvenc prog: dts %lld stalled at row %u of %u for %u ms, gate opened\n",
+                    slot->dts, slot->rows, slot->height, prog_stall_ms);
+            rkvenc_prog_release(slot);
+        } else {
+            hrtimer_forward_now(t, ns_to_ktime(RKVENC_PROG_TICK_NS));
+            ret = HRTIMER_RESTART;
+        }
+    }
+    spin_unlock_irqrestore(&rkvenc_prog_lock, flags);
+
+    return ret;
+}
+
+/* called from rkvenc_run() after the task registers, before the start */
+static void rkvenc_prog_on_run(struct mpp_dev *mpp, struct mpp_task *mpp_task,
+                               u32 jpeg_en)
+{
+    struct rkvenc_prog_slot *slot = mpp_task->prog;
+    unsigned long flags;
+    u32 val;
+
+    spin_lock_irqsave(&rkvenc_prog_lock, flags);
+    /* a pass that ended without a terminal irq must not see later updates */
+    if (rkvenc_prog_cur)
+        rkvenc_prog_detach(rkvenc_prog_cur);
+    if (rkvenc_prog_dirty) {
+        mpp_write_relaxed(mpp, RKVENC_PROG_DVBM_CFG, 0);
+        rkvenc_prog_dirty = 0;
+    }
+    if (!slot || jpeg_en)
+        goto out;
+
+    if (slot->rows_start == RKVENC_PROG_NOT_RUN) {
+        slot->rows_start = slot->rows;
+        slot->run_ns = ktime_get_ns();
+    }
+    /* complete, released, or not progressive: an ordinary pass */
+    if (!(slot->flags & KMPP_FRM_IN_PROGRESSIVE) || slot->rows >= slot->height)
+        goto out;
+
+    slot->mpp = mpp;
+    rkvenc_prog_cur = slot;
+    rkvenc_prog_dirty = 1;
+
+    /* ch_id = 1, vrsp_rtn_en, vinf_req_en; frame_id 0, frm_id_match off */
+    val = mpp_read_relaxed(mpp, RKVENC_PROG_ENC_ID) & ~0xffU;
+    mpp_write_relaxed(mpp, RKVENC_PROG_ENC_ID, val | BIT(16) | BIT(18) | BIT(19));
+    mpp_write_relaxed(mpp, RKVENC_PROG_VS_LDLY, RKVENC_PROG_LDLY(slot->rows));
+    /* dvbm_en, vinf_dly_cycle 2, then isp connect, then vepu connect */
+    val = BIT(0) | (2 << 8);
+    mpp_write(mpp, RKVENC_PROG_DVBM_CFG, val | BIT(4));
+    mpp_write(mpp, RKVENC_PROG_DVBM_CFG, val | BIT(4) | BIT(5));
+
+    if (prog_stall_ms) {
+        if (!rkvenc_prog_timer_ready) {
+            hrtimer_init(&rkvenc_prog_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+            rkvenc_prog_timer.function = rkvenc_prog_tick;
+            rkvenc_prog_timer_ready = 1;
+        }
+        hrtimer_start(&rkvenc_prog_timer, ns_to_ktime(RKVENC_PROG_TICK_NS),
+                      HRTIMER_MODE_REL);
+    }
+out:
+    spin_unlock_irqrestore(&rkvenc_prog_lock, flags);
+}
+
+/* called from the irq handler with the raw irq status */
+static void rkvenc_prog_on_irq(struct mpp_dev *mpp, struct mpp_task *mpp_task,
+                               u32 irq_status)
+{
+    struct rkvenc_prog_slot *slot = mpp_task->prog;
+
+    /* frame done or an error; slice and watchdog irqs do not end the pass */
+    if (!slot || !(irq_status & (INT_STA_ENC_DONE_STA | 0xffc0)))
+        return;
+
+    spin_lock(&rkvenc_prog_lock);
+    if (!(irq_status & INT_STA_ENC_DONE_STA))
+        slot->hw_err = 1;
+    if (slot == rkvenc_prog_cur && slot->mpp == mpp) {
+        slot->done_ns = ktime_get_ns();
+        rkvenc_prog_detach(slot);
+    }
+    spin_unlock(&rkvenc_prog_lock);
+}
+
+/*
+ * Called before a reset: open the gate (a core waiting on DVBM does not
+ * finish its soft reset) and detach the pass.
+ */
+static void rkvenc_prog_on_reset(struct mpp_dev *mpp)
+{
+    struct rkvenc_prog_slot *slot;
+    unsigned long flags;
+
+    spin_lock_irqsave(&rkvenc_prog_lock, flags);
+    slot = rkvenc_prog_cur;
+    if (slot && slot->mpp == mpp) {
+        slot->hw_err = 1;
+        rkvenc_prog_release(slot);
+        rkvenc_prog_detach(slot);
+    }
+    rkvenc_prog_dirty = 1;
+    spin_unlock_irqrestore(&rkvenc_prog_lock, flags);
+}
+
+static void rkvenc_prog_exit(void)
+{
+    if (rkvenc_prog_timer_ready)
+        hrtimer_cancel(&rkvenc_prog_timer);
+}
+
 static int rkvenc_run(struct mpp_dev *mpp, struct mpp_task *mpp_task)
 {
     struct rkvenc_dev *enc = to_rkvenc_dev(mpp);
@@ -1842,6 +2029,9 @@ static int rkvenc_run(struct mpp_dev *mpp, struct mpp_task *mpp_task)
 
     /* flush tlb before starting hardware */
     mpp_iommu_flush_tlb(mpp->iommu_info);
+
+    if (!session->online)
+        rkvenc_prog_on_run(mpp, mpp_task, jpeg_en);
 
     if (session->online) {
         mpp_rkvenc_dvbm_update(&enc->dvbm, mpp_task, session->online);
@@ -2144,6 +2334,8 @@ static int rkvenc_irq(struct mpp_dev *mpp)
 
     if (!mpp_task)
         return IRQ_HANDLED;
+
+    rkvenc_prog_on_irq(mpp, mpp_task, irq_status);
 
     if (test_bit(TASK_STATE_HANDLE, &mpp_task->state))
         return IRQ_HANDLED;
@@ -2978,6 +3170,8 @@ static int rkvenc_reset(struct mpp_dev *mpp)
     if (enc->devfreq)
         mutex_lock(&enc->devfreq->lock);
 #endif
+    rkvenc_prog_on_reset(mpp);
+
     /* safe reset first*/
     ret = rkvenc_soft_reset(mpp);
 
@@ -3775,6 +3969,8 @@ static int rkvenc_remove(struct platform_device *pdev)
 {
     struct device *dev = &pdev->dev;
     struct device_node *np = mpp_dev_of_node(dev);
+
+    rkvenc_prog_exit();
 
     if (strstr(np->name, "ccu")) {
         dev_info(dev, "remove ccu\n");

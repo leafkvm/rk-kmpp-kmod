@@ -66,6 +66,14 @@ void *kmpp_session_get_dev(KmppSession obj)
     return kmpp_session_get_dev_legacy(session);
 }
 
+void kmpp_session_set_prog(KmppSession obj, void *prog)
+{
+    KmppSessionOld *session = (KmppSessionOld *)kmpp_obj_to_priv(obj);
+
+    if (session)
+        session->prog_next = prog;
+}
+
 static rk_s32 kmpp_session_ioc_setup(KmppFsDev *file, KmppShmPtr *shm)
 {
     return rk_ok;

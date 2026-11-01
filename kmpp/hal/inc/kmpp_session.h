@@ -26,5 +26,7 @@ rk_s32 kmpp_session_is_running(KmppSession obj);
 rk_s32 kmpp_session_run_task(KmppSession obj, void *param);
 rk_s32 kmpp_session_add_req(KmppSession obj, void *reqs);
 void *kmpp_session_get_dev(KmppSession obj);
+/* leafkvm: attach a progressive input slot to the next task added */
+void kmpp_session_set_prog(KmppSession obj, void *prog);
 
 #endif /* __KMPP_SESSION_H__ */

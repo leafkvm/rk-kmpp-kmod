@@ -2553,7 +2553,9 @@ MPP_RET mpp_enc_impl_int(MppEnc ctx, MppEnc jpeg_ctx, KmppPacket *packet,
     MPP_RET ret = MPP_OK;
     RK_U8 force_idr = 1;
     RK_U32 eos = 0;
+    RK_U32 prog_discard = enc->prog_discard;
 
+    enc->prog_discard = 0;
     if (jpeg_ctx) {
         MppEncImpl *jpeg_enc = (MppEncImpl *)jpeg_ctx;
 
@@ -2567,6 +2569,21 @@ MPP_RET mpp_enc_impl_int(MppEnc ctx, MppEnc jpeg_ctx, KmppPacket *packet,
     ret = mpp_enc_end(enc, task, jpeg_task);
     if (ret)
         goto TASK_DONE;
+
+    /*
+     * leafkvm: progressive input aborted or stalled, the frame was encoded
+     * over stale rows. Drop it the way rate control drops a frame after
+     * encoding: roll the references back (separate recon buffers), or, for
+     * an IDR or with shared buffers, force the next frame to IDR.
+     */
+    if (prog_discard) {
+        if (!enc->ref_buf_shared && !frm->is_idr) {
+            mpp_enc_reenc_drop(enc, task);
+            force_idr = 0;
+        }
+        ret = MPP_NOK;
+        goto TASK_DONE;
+    }
 
     while (frm->reencode && frm->reencode_times < cfg->rc.max_reenc_times) {
         /* only support I frame drop when online case */

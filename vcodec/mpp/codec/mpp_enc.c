@@ -668,6 +668,55 @@ RK_S32 mpp_enc_unbind_jpeg_task(MppEnc ctx)
     return mpp_dev_chnl_unbind_jpeg_task(enc->dev);
 }
 
+/*
+ * leafkvm: can this channel take gated (progressive) input? The source must
+ * be read top to bottom by the encoder alone: H.264/H.265, offline, no
+ * smart pre-pass, no rotation or vertical flip.
+ */
+MPP_RET mpp_enc_prog_check(MppEnc ctx, RK_U32 gated)
+{
+    MppEncImpl *enc = (MppEncImpl *)ctx;
+    MppEncCfgSet *cfg;
+
+    if (!enc || !enc->cfg)
+        return MPP_NOK;
+
+    cfg = enc->cfg;
+    if (enc->coding != MPP_VIDEO_CodingAVC && enc->coding != MPP_VIDEO_CodingHEVC)
+        return MPP_NOK;
+    if (enc->online)
+        return MPP_NOK;
+    if (!gated)
+        return MPP_OK;
+    /* gating: no smart pre-pass, the source is read top to bottom */
+    if (cfg->base.smt1_en || cfg->base.smt3_en)
+        return MPP_NOK;
+    if (cfg->prep.rotation != MPP_ENC_ROT_0 || cfg->prep.flip)
+        return MPP_NOK;
+
+    return MPP_OK;
+}
+
+/* leafkvm: attach a progressive input slot to the next hardware task */
+MPP_RET mpp_enc_set_prog(MppEnc ctx, void *slot)
+{
+    MppEncImpl *enc = (MppEncImpl *)ctx;
+
+    if (!enc || !enc->dev)
+        return MPP_NOK;
+
+    return mpp_dev_ioctl(enc->dev, MPP_DEV_SET_PROG, slot);
+}
+
+/* leafkvm: the running frame's output must not be emitted (abort/stall) */
+void mpp_enc_set_prog_discard(MppEnc ctx)
+{
+    MppEncImpl *enc = (MppEncImpl *)ctx;
+
+    if (enc)
+        enc->prog_discard = 1;
+}
+
 rk_bool mpp_enc_check_is_int_process(MppEnc ctx)
 {
     MppEncImpl *enc = (MppEncImpl *)ctx;

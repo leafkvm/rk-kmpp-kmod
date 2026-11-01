@@ -1550,6 +1550,10 @@ rk_s32 kmpp_session_add_req_legacy(KmppSessionOld *session, void *param)
                 task = task_msgs.task;
                 queue = task_msgs.queue;
 
+                /* leafkvm: progressive input slot travels with the task */
+                task->prog = session->prog_next;
+                session->prog_next = NULL;
+
                 atomic_inc(&mpp->task_count);
                 set_bit(TASK_STATE_PENDING, &task->state);
 

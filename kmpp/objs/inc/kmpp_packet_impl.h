@@ -61,6 +61,10 @@ typedef struct KmppPacketImpl_t {
     rk_u32 enc_cplx_lvl;
     rk_u32 enc_luma_ave;
     rk_u32 enc_rc_reinit;
+    /* leafkvm progressive input record, see include/rk-vcodec-prog.h */
+    rk_u32 in_status;
+    rk_u32 in_rows_start;
+    rk_u32 in_tail_us;
     RingBuf buf;
 } KmppPacketImpl;
 

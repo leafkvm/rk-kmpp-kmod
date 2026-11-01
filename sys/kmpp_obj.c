@@ -63,10 +63,14 @@
 #define ENTRY_TO_uptr_PTR(tbl, entry)   ((rk_u64 *)ENTRY_TO_PTR(tbl, entry))
 #define ENTRY_TO_ufp_PTR(tbl, entry)    ((rk_u64 *)ENTRY_TO_PTR(tbl, entry))
 
-/* 32bit unsigned long pointer */
-#define ELEM_FLAG_U32_POS(offset)       (((offset) & (~31)) / 8)
-#define ELEM_FLAG_BIT_POS(offset)       ((offset) & 31)
-#define ENTRY_TO_FLAG_PTR(e, entry)     ((rk_ul *)((rk_u8 *)entry + ELEM_FLAG_U32_POS(e->tbl.flag_offset)))
+/*
+ * The bitops take an unsigned long pointer and must be long aligned (arm64
+ * atomics fault on a 4-byte aligned address), so address the flag bit by
+ * long word. Same bit layout as 32-bit words on little-endian.
+ */
+#define ELEM_FLAG_UL_POS(offset)        (((offset) & ~(BITS_PER_LONG - 1)) / 8)
+#define ELEM_FLAG_BIT_POS(offset)       ((offset) & (BITS_PER_LONG - 1))
+#define ENTRY_TO_FLAG_PTR(e, entry)     ((rk_ul *)((rk_u8 *)entry + ELEM_FLAG_UL_POS(e->tbl.flag_offset)))
 
 #define ENTRY_SET_FLAG(e, entry) \
     kmpp_set_bit(ELEM_FLAG_BIT_POS(e->tbl.flag_offset), ENTRY_TO_FLAG_PTR(e, entry))

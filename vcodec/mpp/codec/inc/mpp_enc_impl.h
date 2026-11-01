@@ -141,6 +141,7 @@ typedef struct MppEncImpl_t {
     struct hal_shared_buf *shared_buf;
     RK_U32 qp_out;
     RK_U32 rc_init_cnt; /* leafkvm: rc model (re-)inits on this channel */
+    RK_U32 prog_discard; /* leafkvm: discard the running frame's output */
     RK_U32 chan_id;
     RK_S32 last_scene_mode;
     KmppVencNtfy venc_notify;

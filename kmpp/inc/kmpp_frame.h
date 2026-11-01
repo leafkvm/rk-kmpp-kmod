@@ -315,6 +315,8 @@ typedef void* KmppPpInfo;
     ENTRY(prefix, u32,  rk_u32,             buf_size,           FLAG_NONE,  buf_size) \
     ENTRY(prefix, u32,  rk_u32,             buf_fd,             FLAG_NONE,  buf_fd) \
     ENTRY(prefix, u32,  rk_u32,             is_gray,            FLAG_NONE,  is_gray) \
+    ENTRY(prefix, u32,  rk_u32,             in_flags,           FLAG_NONE,  in_flags) \
+    ENTRY(prefix, u32,  rk_u32,             ready_rows,         FLAG_NONE,  ready_rows) \
     STRCT(prefix, shm,  KmppShmPtr,         meta,               FLAG_NONE,  meta) \
     STRCT(prefix, st,   MppFrameRational,   sar,                FLAG_NONE,  sar) \
     SHOOK(prefix, shm,  KmppShmPtr,         buffer,             FLAG_NONE,  buffer)

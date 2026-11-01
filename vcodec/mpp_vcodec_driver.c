@@ -32,6 +32,7 @@
 #include "kmpp_cls.h"
 #include "rk-mpp-kobj.h"
 #include "kmpp_venc_objs_impl.h"
+#include "mpp_vcodec_prog.h"
 
 struct vcodec_msg {
     __u32 cmd;
@@ -229,8 +230,11 @@ static int vcodec_process_cmd(void *private, struct vcodec_request *req)
         }
         ret = mpp_vcodec_chan_push_frm(chan_id, param);
         if (ret) {
-            /* input frame queue full (MAX_FRAME_NUM) */
-            ret = -EAGAIN;
+            /*
+             * -EINVAL: tracked frame rejected (leafkvm progressive input);
+             * anything else: input frame queue full (MAX_FRAME_NUM)
+             */
+            ret = (ret == -EINVAL) ? -EINVAL : -EAGAIN;
             goto fail;
         }
     } break;
@@ -323,6 +327,26 @@ static rk_s32 vcodec_ioctl(KmppFsDev *file, rk_s32 cmd, void *arg)
         if (kmpp_copy_from_user(&v_msg, msg, sizeof(v_msg)))
             return -EFAULT;
 
+        /* Serialize progress with channel identity changes and other ioctls.
+         * Progressive input requires nonblocking submission; destruction
+         * releases its gates before waiting for hardware completion. */
+        if (v_msg.cmd == VCODEC_CHAN_IN_FRM_PROGRESS) {
+            struct vcodec_frm_progress prog;
+
+            if (v_msg.size != sizeof(prog) || !v_msg.data_ptr)
+                return -EINVAL;
+            if (kmpp_copy_from_user(&prog, (const void *)(unsigned long)v_msg.data_ptr,
+                                    sizeof(prog)))
+                return -EFAULT;
+            kmpp_down(ctx->ioctl_sem);
+            if (!ctx->chan_create || ctx->type != MPP_CTX_ENC)
+                ret = -ENOENT;
+            else
+                ret = mpp_vcodec_prog_progress(ctx->chan_id, &prog);
+            kmpp_up(ctx->ioctl_sem);
+            return ret;
+        }
+
         kmpp_down(ctx->ioctl_sem);
         ret = vcodec_process_msg(&v_msg, &req);
         if (ret) {
@@ -367,9 +391,11 @@ static rk_s32 vcodec_poll(KmppFsDev *file, void *poll_table)
     }
     kmpp_spin_unlock_irqrestore(chan_entry->pkt_lock, &flags);
 
-    if (chan_entry->state == CHAN_STATE_SUSPEND)
-        return mask;
-
+    /*
+     * leafkvm: the vendor returned here (mask 0, no wait queue) for a stopped
+     * channel, so poll() slept its whole timeout even when the frame that was
+     * on the hardware at STOP (a progressive hold) delivered its packet.
+     */
     kmpp_poll_wait(file, chan_entry->wait, poll_table);
 
     kmpp_spin_lock_irqsave(chan_entry->pkt_lock, &flags);

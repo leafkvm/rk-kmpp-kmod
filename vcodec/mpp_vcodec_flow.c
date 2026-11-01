@@ -20,6 +20,7 @@
 #include "kmpp_venc_objs_impl.h"
 #include "kmpp_meta.h"
 #include "kmpp_atomic.h"
+#include "mpp_vcodec_prog.h"
 
 void mpp_vcodec_enc_add_packet_list(struct mpp_chan *chan_entry, KmppPacket packet);
 
@@ -34,6 +35,7 @@ static MPP_RET enc_chan_process_single_chan(RK_U32 chan_id)
     RK_U64 dts = 0;
     KmppShmPtr sptr;
     KmppMeta meta = NULL;
+    struct rkvenc_prog_slot *prog = NULL;
     RK_U32 pskip_num = 0;
     RK_U32 pskip = 0;
     void *comb_handle = NULL;
@@ -84,6 +86,7 @@ static MPP_RET enc_chan_process_single_chan(RK_U32 chan_id)
     kmpp_list_del_init(chan_entry->frm_list.next);
     chan_entry->frame_cnt--;
     kmpp_spin_unlock_irqrestore(chan_entry->chan_lock, &lock_flag);
+    prog = mpp_vcodec_prog_take(chan_entry, frame);
     chan_entry->gap_time = (RK_S32)(kmpp_time_us() - chan_entry->last_yuv_time);
     chan_entry->last_yuv_time = kmpp_time_us();
     mpp_vcodec_flow("chan %d get frame %p\n", chan_id, frame);
@@ -227,8 +230,12 @@ static MPP_RET enc_chan_process_single_chan(RK_U32 chan_id)
 
     kmpp_frame_get_dts(frame, &dts);
     mpp_vcodec_detail("chan %d send reg task\n", chan_id);
-    /* 8. send reg task to hw */
+    /* 8. send reg task to hw; a tracked frame's slot goes with the task */
+    if (prog)
+        mpp_enc_set_prog((MppEnc)chan_entry->handle, prog);
     ret = mpp_enc_hw_start((MppEnc)chan_entry->handle, comb_handle);
+    if (prog)
+        mpp_enc_set_prog((MppEnc)chan_entry->handle, NULL);
 
     chan_entry->seq_encoding = dts;
     cfg_end = kmpp_time_us();
@@ -241,6 +248,10 @@ __RETURN:
         venc = mpp_vcodec_get_enc_module_entry();
         if (frame) {
             KmppVencNtfy ntfy = mpp_enc_get_notify(chan_entry->handle);
+
+            /* leafkvm: a tracked frame still gets its record */
+            if (prog)
+                mpp_vcodec_prog_dropped(chan_entry);
 
             if (ntfy) {
                 KmppVencNtfyImpl* ntfy_impl = kmpp_obj_to_entry(ntfy);
@@ -336,7 +347,10 @@ static void mpp_vcodec_event_frame(int chan_id)
         chan_entry->binder_chan_id = -1;
         comb_entry->master_chan_id = -1;
     } else {
+        mpp_vcodec_prog_pre_int(chan_entry);
         ret = mpp_enc_int_process((MppEnc)chan_entry->handle, NULL, &packet, &jpeg_packet);
+        /* leafkvm: record fields, or a DISCARD record for a tracked frame */
+        packet = mpp_vcodec_prog_post_int(chan_entry, packet, ret);
     }
 
     if (packet)

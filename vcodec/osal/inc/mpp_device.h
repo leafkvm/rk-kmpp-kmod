@@ -18,6 +18,8 @@ typedef enum MppDevIoctlCmd_e {
     MPP_DEV_CMD_SEND,
     MPP_DEV_CMD_POLL,
     MPP_DEV_CMD_RUN_TASK,
+    /* leafkvm: progressive input slot for the next MPP_DEV_CMD_SEND */
+    MPP_DEV_SET_PROG,
 
     MPP_DEV_IOCTL_CMD_BUTT,
 } MppDevIoctlCmd;
@@ -72,6 +74,7 @@ typedef struct MppDevApi_t {
     RK_S32 (*run_task)(void *ctx, void *param);
     RK_S32 (*chnl_check_running)(void *ctx);
     RK_S32 (*control)(void *ctx, RK_U32 cmd, void *param);
+    void (*set_prog)(void *ctx, void *prog);
 } MppDevApi;
 
 typedef void *MppDev;
